@@ -398,6 +398,9 @@ function get_hosts_file_from_backup_site(){
     if ! grep github /etc/hosts >/dev/null; then
         cp /etc/hosts /etc/hosts$(date +%Y%m%d%H%M%S)~
     else
+        # TODO
+        # rm: cannot remove ‘/etc/hosts’: Device or resource busy
+        # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
         \cp -f hosts/hosts /etc/hosts
     fi
@@ -433,7 +436,11 @@ function get_hosts_file_from_github(){
         cp /etc/hosts /etc/hosts$(date +%Y%m%d%H%M%S)~
         \cp -f hosts/hosts /etc/hosts
     else
+        # TODO
+        # rm: cannot remove ‘/etc/hosts’: Device or resource busy
+        # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
+
         \cp -f hosts/hosts /etc/hosts
     fi
 }
