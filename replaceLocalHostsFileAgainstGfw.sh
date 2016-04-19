@@ -87,7 +87,7 @@ WORKDIR=$PRGDIR
 
 USER="`id -un`"
 LOGNAME=$USER
-if [$UID -ne 0 ]; then
+if [ $UID -ne 0 ]; then
     echo "WARNING: Running as a non-root user, \"$LOGNAME\". Functionality may be unavailable. Only root can use some commands or options"
 fi
 
@@ -99,10 +99,10 @@ fi
 header="
 Function: Execute this shell script to access Google, etc easily.
 
-Copyright (c) 2013-2016, Written by Guodong Ding <dgdenterprise@gmail.com>.
-http://dgd2010.blog.51cto.com/
-https://github.com/DingGuodong
-Last updated: 2016-4-17
+Open source software Written by Guodong Ding <dgdenterprise@gmail.com>.
+Blog: http://dgd2010.blog.51cto.com/
+Github: https://github.com/DingGuodong
+Last updated: 2016-4-19
 "
 
 check_network_connectivity(){
