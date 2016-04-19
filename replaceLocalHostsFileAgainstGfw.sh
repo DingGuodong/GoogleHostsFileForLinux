@@ -440,7 +440,7 @@ function get_hosts_file_from_github(){
 
 function validate_network_to_outside(){
     echo_b "validating hosts file ... "
-    http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" http:/www.google.com.hk/)
+    http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
     if [ $http_code -ne 200 ]; then
         echo_g "Replace hosts file succeeded! "
         echo
