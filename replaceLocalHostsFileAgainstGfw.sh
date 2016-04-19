@@ -85,6 +85,12 @@ WORKDIR=$PRGDIR
 # end public header
 # =============================================================================================================================
 
+USER="`id -un`"
+LOGNAME=$USER
+if [$UID -ne 0 ]; then
+    echo "WARNING: Running as a non-root user, \"$LOGNAME\". Functionality may be unavailable. Only root can use some commands or options"
+fi
+
 # Name: replaceLocalHostsFileAgainstGfw.sh
 # Refer to: https://github.com/racaljk/hosts
 # Backups: https://coding.net/u/scaffrey/p/hosts/git
