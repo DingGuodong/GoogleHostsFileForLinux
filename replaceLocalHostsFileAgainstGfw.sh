@@ -24,7 +24,7 @@ function cecho {
     # Usage:
     # cecho -red sometext     #Error, Failed
     # cecho -green sometext   # Success
-    # cecho -yellow sometext  # Warnning
+    # cecho -yellow sometext  # Warning
     # cecho -blue sometext    # Debug
     # cecho -white sometext   # info
     # cecho -n                # new line
@@ -70,7 +70,7 @@ function echo_g () {
     echo -e "\033[32m$1\033[0m"
 }
 function echo_y () {
-    # Warnning
+    # Warning
     [ $# -ne 1 ] && return 0
     echo -e "\033[33m$1\033[0m"
 }
@@ -126,7 +126,7 @@ check_network_connectivity(){
 }
 
 check_name_resolve(){
-    echo_b "check name resolve ... "
+    echo_b "checking name resolve ... "
     target_name_to_resolve="github.com"
     stable_target_name_to_resolve="www.aliyun.com"
     ping_count=1
