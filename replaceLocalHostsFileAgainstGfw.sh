@@ -449,7 +449,7 @@ function get_hosts_file_from_github(){
 
 function validate_network_to_outside(){
     echo_b "validating hosts file ... "
-    for (( i=0 ; i++ ; $i < 3 )) do
+    for (( i=0 ; i++ ; i < 3 )) do
         http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
         RETVAL=$?
         if [ $http_code -ne 200 ]; then
@@ -461,7 +461,8 @@ function validate_network_to_outside(){
             echo_y "replace hosts file failed! Try again, times $i"
         fi
     done
-    if [ $RETVAL -ne 0 ]; then
+    # if [[ $RETVAL -ne 0 ]]; then
+    if [ "$RETVAL" -ne "0" ]; then
         echo_r "Google can NOT be reached! Please let we know via email to \"dgdenterprise@gmail.com"\"
         exit 1
     fi
