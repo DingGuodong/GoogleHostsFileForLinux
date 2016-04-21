@@ -436,32 +436,33 @@ function get_hosts_file_from_github(){
 
     if ! grep github /etc/hosts >/dev/null && test hosts/hosts -nt /etc/hosts; then
         cp /etc/hosts /etc/hosts$(date +%Y%m%d%H%M%S)~
-        \cp -f hosts/hosts /etc/hosts
+        [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || echo_r "can NOT find file \"hosts/hosts\""
     else
         # TODO
         # rm: cannot remove ‘/etc/hosts’: Device or resource busy
         # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
-
-        \cp -f hosts/hosts /etc/hosts
+        [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || echo_r "can NOT find file \"hosts/hosts\""
     fi
 }
 
 function validate_network_to_outside(){
     echo_b "validating hosts file ... "
-    for (( i=0 ; i++ ; i < 3 )) do
+    for (( i=1 ; i<=3 ; i++ )) do
         http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
         RETVAL=$?
-        if [ $http_code -ne 200 ]; then
+        if [ "$http_code" -eq "200" ]; then
             echo_g "Replace hosts file succeeded! "
             echo
             echo_g "Now you can access Google, etc easily! "
             break
         else
+            echo "returned http code is: $http_code"
             echo_y "replace hosts file failed! Try again, times $i"
         fi
     done
     if [[ $RETVAL != 0 ]]; then
+        echo "returned code is: $RETVAL"
         echo_r "Google can NOT be reached! Please let we know via email to \"dgdenterprise@gmail.com"\"
         exit 1
     fi
