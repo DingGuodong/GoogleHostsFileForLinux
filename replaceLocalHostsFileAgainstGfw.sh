@@ -395,6 +395,7 @@ Get_Dist_Version()
 # end refer to http://lnmp.org/download.html
 
 function get_hosts_file_from_backup_site(){
+    echo_b "getting hosts file backup site ... "
     if ! grep github /etc/hosts >/dev/null; then
         cp /etc/hosts /etc/hosts$(date +%Y%m%d%H%M%S)~
     else
@@ -413,6 +414,7 @@ function get_hosts_file_from_backup_site(){
 }
 
 function get_hosts_file_from_github(){
+    echo_b "getting hosts file from GitHub ... "
     if [ ! -d hosts ]; then
         command_exists git && git clone https://github.com/racaljk/hosts.git >/dev/null 2>&1
         retval=$?
@@ -447,7 +449,7 @@ function get_hosts_file_from_github(){
 
 function validate_network_to_outside(){
     echo_b "validating hosts file ... "
-    for (( i=1 ; i++ ; $i < 3)) do
+    for (( i=0 ; i++ ; $i < 3 )) do
         http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
         RETVAL=$?
         if [ $http_code -ne 200 ]; then
