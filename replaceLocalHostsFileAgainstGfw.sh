@@ -421,7 +421,7 @@ function get_hosts_file_from_github(){
             get_hosts_file_from_backup_site
             return
         else
-            [ -s hosts/hosts ] && echo "git clone successfully! " || exit 1
+            [ -s hosts/hosts ] && echo_g "git clone successfully! " || exit 1
         fi
     elif [ -d hosts/.git ]; then
         cd hosts
@@ -447,16 +447,48 @@ function get_hosts_file_from_github(){
 
 function validate_network_to_outside(){
     echo_b "validating hosts file ... "
-    http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
-    if [ $http_code -ne 200 ]; then
-        echo_g "Replace hosts file succeeded! "
-        echo
-        echo_g "Now you can access Google, etc easily! "
-    else
-        echo_r "replace hosts file failed! "
+    for (( i=1 ; i++ ; $i < 3)) do
+        http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
+        RETVAL=$?
+        if [ $http_code -ne 200 ]; then
+            echo_g "Replace hosts file succeeded! "
+            echo
+            echo_g "Now you can access Google, etc easily! "
+            break
+        else
+            echo_y "replace hosts file failed! Try again, times $i"
+        fi
+    done
+    if [ $RETVAL -ne 0 ]; then
+        echo_r "Google can NOT be reached! Please let we know via email to \"dgdenterprise@gmail.com"\"
         exit 1
     fi
 
+}
+
+function validate_etc_host_conf(){
+    echo_b "validating /etc/host.conf file ... "
+    if [ -f /etc/host.conf ]; then
+        command_exists md5sum || ( echo_r "system is broken, md5sum comes from coreutils usually! " && exit 1 )
+        md5="`md5sum /etc/host.conf`"
+        content="`cat /etc/host.conf`"
+        if $md5 == "ea2ffefe1a1afb7042be04cd52f611a6" || $content == "order hosts,bind"; then
+            echo_g "/etc/host.conf file's content is \"`cat /etc/host.conf`\""
+
+        elif $md5 == "4eb63731c9f5e30903ac4fc07a7fe3d6" || $content == "multi on"; then
+            echo_g "/etc/host.conf file's content is \"`cat /etc/host.conf`\""
+        else
+            echo_y "/etc/host.conf file's content is \"`cat /etc/host.conf`\""
+        fi
+        echo_g "validating /etc/host.conf file passed! "
+        return
+    else
+        echo_y "system maybe broken, can NOT find file \"/etc/host.conf\", make a new one"
+        cat >/etc/host.conf<<eof
+order hosts,bind
+eof
+    fi
+    validate_etc_host_conf
 }
 
 # main function
