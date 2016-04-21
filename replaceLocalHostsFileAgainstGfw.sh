@@ -114,16 +114,16 @@ check_network_connectivity(){
     retval=$?
     if [ $retval -ne 0 ] ; then
         if ping -c $ping_count $stable_network_address_to_check >/dev/null;then
-            echo_g "network to $stable_network_address_to_check succeed! "
-            echo_y "note: network to $network_address_to_check failed! "
+            echo_g "Network to $stable_network_address_to_check succeed! "
+            echo_y "Note: network to $network_address_to_check failed! "
         elif ! ip route | grep default >/dev/null; then
-            echo_r "network is unreachable, gateway is not set."
+            echo_r "Network is unreachable, gateway is not set."
             exit 1
         elif ! ping -c2 $(ip route | awk '/default/ {print $3}') >/dev/null; then
-            echo_r "network is unreachable, gateway is unreachable."
+            echo_r "Network is unreachable, gateway is unreachable."
             exit 1
         else
-            echo_r "network is blocked! "
+            echo_r "Network is blocked! "
             exit 1
         fi
     elif [ $retval -eq 0 ]; then
@@ -137,9 +137,9 @@ check_name_resolve(){
     stable_target_name_to_resolve="www.aliyun.com"
     ping_count=1
     if ! ping  -c$ping_count $target_name_to_resolve >/dev/null; then
-        echo_y "name lookup failed for $target_name_to_resolve with $ping_count times "
+        echo_y "Name lookup failed for $target_name_to_resolve with $ping_count times "
         if ping  -c$ping_count $stable_target_name_to_resolve >/dev/null; then
-            echo_g "name lookup success for $stable_target_name_to_resolve with $ping_count times "
+            echo_g "Name lookup success for $stable_target_name_to_resolve with $ping_count times "
         fi
         [ -f /etc/resolv.conf ] && cp /etc/resolv.conf /etc/resolv.conf$(date +%Y%m%d%H%M%S)~
         cat >/etc/resolv.conf<<eof
@@ -426,23 +426,32 @@ function get_hosts_file_from_github(){
             [ -s hosts/hosts ] && echo_g "git clone successfully! " || exit 1
         fi
     elif [ -d hosts/.git ]; then
+        echo_y "Note: a existed git repo is found! Attempt to update it! "
         cd hosts
         command_exists git && git pull >/dev/null 2>&1
+        retval=$?
+        if [ $retval -ne 0 ] ; then
+            echo_r "git pull failed! "
+            get_hosts_file_from_backup_site
+            return
+        else
+            echo_g "git pull successfully! "
+        fi
         cd ..
     else
-        echo_r "there was a directory named \"hosts\", failed! "
+        echo_r "there was a directory named \"hosts\", please remove it or change a work directory and try again, failed! "
         exit 1
     fi
 
     if ! grep github /etc/hosts >/dev/null && test hosts/hosts -nt /etc/hosts; then
         cp /etc/hosts /etc/hosts$(date +%Y%m%d%H%M%S)~
-        [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || echo_r "can NOT find file \"hosts/hosts\""
+        [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || ( echo_r "can NOT find file \"hosts/hosts\"" && exit 1 )
     else
         # TODO
         # rm: cannot remove ‘/etc/hosts’: Device or resource busy
         # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
-        [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || echo_r "can NOT find file \"hosts/hosts\""
+        [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || ( echo_r "can NOT find file \"hosts/hosts\"" && exit 1 )
     fi
 }
 
@@ -451,18 +460,18 @@ function validate_network_to_outside(){
     for (( i=1 ; i<=3 ; i++ )) do
         http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
         RETVAL=$?
-        if [ "$http_code" -eq "200" ]; then
+        if test "$http_code" = "200" -o $http_code -eq 200 ; then
             echo_g "Replace hosts file succeeded! "
             echo
             echo_g "Now you can access Google, etc easily! "
             break
         else
-            echo "returned http code is: $http_code"
+            echo "Process returned with HTTP code is: $http_code"
             echo_y "replace hosts file failed! Try again, times $i"
         fi
     done
-    if [[ $RETVAL != 0 ]]; then
-        echo "returned code is: $RETVAL"
+    if [[ $RETVAL -ne 0 ]]; then
+        echo "Process returned with exit RETURN code: $RETVAL"
         echo_r "Google can NOT be reached! Please let we know via email to \"dgdenterprise@gmail.com"\"
         exit 1
     fi
