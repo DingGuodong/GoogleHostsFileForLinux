@@ -461,8 +461,7 @@ function validate_network_to_outside(){
             echo_y "replace hosts file failed! Try again, times $i"
         fi
     done
-    # if [[ $RETVAL -ne 0 ]]; then
-    if [ "$RETVAL" -ne "0" ]; then
+    if [[ $RETVAL != 0 ]]; then
         echo_r "Google can NOT be reached! Please let we know via email to \"dgdenterprise@gmail.com"\"
         exit 1
     fi
