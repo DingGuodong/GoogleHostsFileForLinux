@@ -132,7 +132,7 @@ check_network_connectivity(){
 }
 
 check_name_resolve(){
-    echo_b "checking name resolve ... "
+    echo_b "checking DNS name resolve ... "
     target_name_to_resolve="github.com"
     stable_target_name_to_resolve="www.aliyun.com"
     ping_count=1
@@ -141,14 +141,14 @@ check_name_resolve(){
         if ping  -c$ping_count $stable_target_name_to_resolve >/dev/null; then
             echo_g "Name lookup success for $stable_target_name_to_resolve with $ping_count times "
         fi
-        [ -f /etc/resolv.conf ] && cp /etc/resolv.conf /etc/resolv.conf$(date +%Y%m%d%H%M%S)~
+        [ -f /etc/resolv.conf ] && cp /etc/resolv.conf /etc/resolv.conf_$(date +%Y%m%d%H%M%S)~
         cat >/etc/resolv.conf<<eof
 nameserver 8.8.4.4
 nameserver 114.114.114.114
 eof
     check_name_resolve
     else
-        echo_g "Check name resolve passed! "
+        echo_g "Check DNS name resolve passed! "
         return
     fi
 
@@ -394,22 +394,51 @@ Get_Dist_Version()
 }
 # end refer to http://lnmp.org/download.html
 
+function restorecon_if_selinux_is_enabled(){
+    [ -f /selinux/enforce ] && SELINUX_STATE=$(cat "/selinux/enforce")
+    [ -n "$SELINUX_STATE" -a -x /sbin/restorecon ] && /sbin/restorecon -r $@
+}
+
+ops_time=
+function backup_old_hosts_file(){
+    echo_b "backup old hosts file ... "
+    ops_time="$(date +%Y%m%d%H%M%S)~"
+    [ -f /etc/hosts ] && cp /etc/hosts /etc/hosts_$ops_time
+    [ -f /etc/hosts_$ops_time ] && echo_g "backup old hosts file successfully! file is\"/etc/hosts_$ops_time\" "
+}
+
+function roll_back_to_old_hosts_file(){
+    echo_b "rolling back to old hosts file ... "
+    if [ "x$ops_time" = "x" ]; then
+        echo_y "Can NOT find backup files, try to find a oldest backup manually! \
+But do NOT worry, it usually because you have backup it last time"
+        oldest_backup_file="`find /etc -name hosts*~ ! -type d -printf "%T@ %p\n" | sort -n | head -n1 | awk '{print $NF}'`"
+        [ -f oldest_backup_file ] && \mv -f $oldest_backup_file /etc/hosts
+        [ -s /etc/hosts ] && echo_g "Rolling back to old hosts file successfully! "
+    else
+        \mv -f /etc/hosts_$ops_time /etc/hosts
+        restorecon_if_selinux_is_enabled /etc/hosts
+        [ -s /etc/hosts ] && echo_g "Rolling back to old hosts file successfully! "
+    fi
+}
+
 function get_hosts_file_from_backup_site(){
     echo_b "getting hosts file backup site ... "
     if ! grep github /etc/hosts >/dev/null; then
-        cp /etc/hosts /etc/hosts$(date +%Y%m%d%H%M%S)~
+        backup_old_hosts_file
     else
         # TODO
         # rm: cannot remove ‘/etc/hosts’: Device or resource busy
         # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
-        \cp -f hosts/hosts /etc/hosts
     fi
     wget -q https://coding.net/u/scaffrey/p/hosts/git/raw/master/hosts -O /etc/hosts
+#    test 1 -eq 2 # debug
     if test $? -eq 0 -a -f /etc/hosts; then
-        echo_g "set hosts file from backup site successfully! "
+        echo_g "Get and set hosts file from backup site successfully! "
     else
-        echo_r "set hosts file from backup site failed! "
+        echo_r "Get hosts file from backup site failed! try to rolling back "
+        roll_back_to_old_hosts_file
     fi
 }
 
@@ -429,6 +458,7 @@ function get_hosts_file_from_github(){
         echo_y "Note: a existed git repo is found! Attempt to update it! "
         cd hosts
         command_exists git && git pull >/dev/null 2>&1
+#        test 1 -eq 2 # debug
         retval=$?
         if [ $retval -ne 0 ] ; then
             echo_r "git pull failed! "
@@ -439,19 +469,21 @@ function get_hosts_file_from_github(){
         fi
         cd ..
     else
-        echo_r "there was a directory named \"hosts\", please remove it or change a work directory and try again, failed! "
+        echo_r "There was a directory named \"hosts\", please remove it or change a work directory and try again, failed! "
         exit 1
     fi
 
     if ! grep github /etc/hosts >/dev/null && test hosts/hosts -nt /etc/hosts; then
-        cp /etc/hosts /etc/hosts$(date +%Y%m%d%H%M%S)~
+        backup_old_hosts_file
         [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || ( echo_r "can NOT find file \"hosts/hosts\"" && exit 1 )
+        echo_g "Replace hosts file succeeded!"
     else
         # TODO
         # rm: cannot remove ‘/etc/hosts’: Device or resource busy
         # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
         [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || ( echo_r "can NOT find file \"hosts/hosts\"" && exit 1 )
+        echo_g "Replace hosts file succeeded!"
     fi
 }
 
@@ -461,8 +493,6 @@ function validate_network_to_outside(){
         http_code=$(curl -o /dev/null -m 10 --connect-timeout 10 -s -w "%{http_code}" https://www.google.com.hk/)
         RETVAL=$?
         if test "$http_code" = "200" -o $http_code -eq 200 ; then
-            echo_g "Replace hosts file succeeded! "
-            echo
             echo_g "Now you can access Google, etc easily! "
             break
         else
@@ -484,18 +514,16 @@ function validate_etc_host_conf(){
         command_exists md5sum || ( echo_r "system is broken, md5sum comes from coreutils usually! " && exit 1 )
         md5="`md5sum /etc/host.conf`"
         content="`cat /etc/host.conf`"
-        if $md5 == "ea2ffefe1a1afb7042be04cd52f611a6" || $content == "order hosts,bind"; then
-            echo_g "/etc/host.conf file's content is \"`cat /etc/host.conf`\""
-
-        elif $md5 == "4eb63731c9f5e30903ac4fc07a7fe3d6" || $content == "multi on"; then
-            echo_g "/etc/host.conf file's content is \"`cat /etc/host.conf`\""
+        if test "$md5" == "ea2ffefe1a1afb7042be04cd52f611a6" -o "$content" == "order hosts,bind" -o \
+        "$md5" == "4eb63731c9f5e30903ac4fc07a7fe3d6" -o "$content" == "multi on"; then
+            echo_g "Validating /etc/host.conf file passed! "
+            return
         else
-            echo_y "/etc/host.conf file's content is \"`cat /etc/host.conf`\""
+            echo_y "Note: /etc/host.conf file's content is \"`cat /etc/host.conf`\""
+            return
         fi
-        echo_g "validating /etc/host.conf file passed! "
-        return
     else
-        echo_y "system maybe broken, can NOT find file \"/etc/host.conf\", make a new one"
+        echo_y "System maybe broken, can NOT find file \"/etc/host.conf\", make a new one"
         cat >/etc/host.conf<<eof
 order hosts,bind
 eof
@@ -509,6 +537,7 @@ cat -<<eof
 $header
 eof
 check_network_connectivity
+validate_etc_host_conf
 check_name_resolve
 check_linux_distribution
 case "$lsb_dist" in
