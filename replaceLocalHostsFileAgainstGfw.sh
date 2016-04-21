@@ -428,7 +428,7 @@ function get_hosts_file_from_github(){
     elif [ -d hosts/.git ]; then
         cd hosts
         command_exists git && git pull >/dev/null 2>&1
-        cd
+        cd ..
     else
         echo_r "there was a directory named \"hosts\", failed! "
         exit 1
