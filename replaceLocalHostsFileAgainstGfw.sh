@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#GoogleHostsFileForLinux
+#Google Hosts File For Linux, a Linux shell script make you access Google easily! Run it directly and enjoy Google services.
+
 # Public header
 # =============================================================================================================================
 # resolve links - $0 may be a symbolic link
@@ -115,7 +118,7 @@ check_network_connectivity(){
     if [ $retval -ne 0 ] ; then
         if ping -c $ping_count $stable_network_address_to_check >/dev/null;then
             echo_g "Network to $stable_network_address_to_check succeed! "
-            echo_y "Note: network to $network_address_to_check failed! "
+            echo_y "Note: network to $network_address_to_check failed once! maybe just some packages loss."
         elif ! ip route | grep default >/dev/null; then
             echo_r "Network is unreachable, gateway is not set."
             exit 1
@@ -427,7 +430,7 @@ function get_hosts_file_from_backup_site(){
     if ! grep github /etc/hosts >/dev/null; then
         backup_old_hosts_file
     else
-        # TODO
+        # TODO(Guodong Ding)
         # rm: cannot remove ‘/etc/hosts’: Device or resource busy
         # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
@@ -478,11 +481,18 @@ function get_hosts_file_from_github(){
         [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || ( echo_r "can NOT find file \"hosts/hosts\"" && exit 1 )
         echo_g "Replace hosts file succeeded!"
     else
-        # TODO
+        # TODO(Guodong Ding)
         # rm: cannot remove ‘/etc/hosts’: Device or resource busy
         # it occurs in docker when mount /etc/hosts to container as a volume
         rm -f /etc/hosts
         [ -f hosts/hosts ] && \cp -f hosts/hosts /etc/hosts || ( echo_r "can NOT find file \"hosts/hosts\"" && exit 1 )
+
+        # check if able to resolve host `hostname -f`, if not, sudo will throw a exception 'sudo: unable to resolve host xxx'
+        echo "127.0.0.1 `hostname`" >> /etc/hosts
+        echo "127.0.0.1 `hostname -f`" >> /etc/hosts
+        echo "`ip addr show scope global $(ip route | awk '/^default/ {print $NF}') | awk -F '[ /]+' '/global/ {print $3}'` `hostname`" >> /etc/hosts
+        echo "`ip addr show scope global $(ip route | awk '/^default/ {print $NF}') | awk -F '[ /]+' '/global/ {print $3}'` `hostname -f`" >> /etc/hosts
+
         echo_g "Replace hosts file succeeded!"
     fi
 }
