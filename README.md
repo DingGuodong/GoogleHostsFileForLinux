@@ -6,10 +6,10 @@ bash GoogleHostsFileForLinux/replaceLocalHostsFileAgainstGfw.sh
 ```
 OR
 ```bash
-\# chmod +x replaceLocalHostsFileAgainstGfw.sh
-\# ./replaceLocalHostsFileAgainstGfw.sh
+# chmod +x replaceLocalHostsFileAgainstGfw.sh
+# ./replaceLocalHostsFileAgainstGfw.sh
 ```
 OR
 ```bash
-\# bash replaceLocalHostsFileAgainstGfw.sh
+# bash replaceLocalHostsFileAgainstGfw.sh
 ```
